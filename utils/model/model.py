@@ -1,6 +1,29 @@
-# This software is licensed under a **dual-license model**
-# For individuals and businesses earning **under $1M per year**, this software is licensed under the **MIT License**
-# Businesses or organizations with **annual revenue of $1,000,000 or more** must obtain permission to use this software commercially.
+"""
+Transformer Model Architecture for Audio-to-Facial Blendshape Conversion
+
+This module implements the seq2seq transformer architecture that converts audio features
+into facial blendshape coefficients. The model uses an encoder-decoder structure with
+RoPE (Rotary Positional Embedding) for positional encoding within attention mechanisms.
+
+Architecture Overview:
+    - Encoder: Processes audio features into latent representations
+    - Decoder: Generates blendshape coefficients from encoder output
+    - Multi-Head Attention: Captures complex dependencies with RoPE
+    - Feed-Forward Networks: Non-linear transformations
+
+Key Features:
+    - RoPE positional encoding (no global positional encoding)
+    - Flash Attention support (PyTorch 2.0+)
+    - Half-precision (float16) support for GPU optimization
+    - Custom transformer layers optimized for audio-to-face mapping
+
+The model outputs 68-dimensional vectors: 61 ARKit blendshapes + 7 emotion values.
+
+License:
+    This software is licensed under a **dual-license model**
+    For individuals and businesses earning **under $1M per year**, this software is licensed under the **MIT License**
+    Businesses or organizations with **annual revenue of $1,000,000 or more** must obtain permission to use this software commercially.
+"""
 
 import torch
 import torch.nn as nn

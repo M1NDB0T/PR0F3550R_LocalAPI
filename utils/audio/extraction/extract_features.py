@@ -1,8 +1,27 @@
-# This software is licensed under a **dual-license model**
-# For individuals and businesses earning **under $1M per year**, this software is licensed under the **MIT License**
-# Businesses or organizations with **annual revenue of $1,000,000 or more** must obtain permission to use this software commercially.
+"""
+Audio Feature Extraction Module
 
-# extract_features.py
+This module extracts audio features from raw audio data for input to the transformer model.
+It combines MFCC (Mel-Frequency Cepstral Coefficients) and autocorrelation features to
+create a rich 256-dimensional feature vector that captures both spectral and temporal
+characteristics of speech.
+
+Key Features:
+    - MFCC extraction with delta and delta-delta coefficients
+    - Autocorrelation features for pitch and temporal patterns
+    - Cepstral mean-variance normalization
+    - Frame reduction for efficient processing
+    - Support for multiple audio formats (WAV, MP3, PCM)
+
+The extracted features are optimized for the transformer model's input requirements
+and maintain temporal alignment for smooth facial animation.
+
+License:
+    This software is licensed under a **dual-license model**
+    For individuals and businesses earning **under $1M per year**, this software is licensed under the **MIT License**
+    Businesses or organizations with **annual revenue of $1,000,000 or more** must obtain permission to use this software commercially.
+"""
+
 import io
 import librosa
 import numpy as np
@@ -10,25 +29,63 @@ import scipy.signal
 
 
 def extract_audio_features(audio_input, sr=88200, from_bytes=False):
+    """
+    Main entry point for audio feature extraction.
+    
+    This function loads audio data (from file or bytes) and extracts combined
+    MFCC and autocorrelation features suitable for the transformer model.
+    
+    Args:
+        audio_input: Audio file path (str) or raw audio bytes
+        sr: Target sample rate (default: 88200 Hz for high-quality processing)
+        from_bytes: If True, treat audio_input as raw bytes; if False, treat as file path
+    
+    Returns:
+        tuple: (combined_features, raw_audio_signal)
+            - combined_features: numpy array of shape (num_frames, 256)
+            - raw_audio_signal: numpy array of audio samples
+            - Returns (None, None) if audio is too short or processing fails
+    
+    Processing Steps:
+        1. Load audio (from file or bytes, with format detection)
+        2. Calculate frame parameters (60 FPS alignment)
+        3. Extract and combine MFCC + autocorrelation features
+        4. Validate minimum frame count for delta calculations
+    
+    Frame Configuration:
+        - Frame length: 0.01667 seconds (aligned to 60 FPS)
+        - Hop length: Half of frame length (2x overlap for smoothness)
+        - Minimum frames: 9 (required for delta feature calculations)
+    """
     try:
+        # Load audio data based on input type
         if from_bytes:
+            # Try loading as standard audio format (WAV, MP3, etc.)
             y, sr = load_audio_from_bytes(audio_input, sr)
         else:
+            # Load from file path
             y, sr = load_and_preprocess_audio(audio_input, sr)
     except Exception as e:
-            print(f"Loading as WAV failed: {e}\nFalling back to PCM loading.")
-            y = load_pcm_audio_from_bytes(audio_input)  
+        # Fallback: Try loading as raw PCM bytes if standard format fails
+        print(f"Loading as WAV failed: {e}\nFalling back to PCM loading.")
+        y = load_pcm_audio_from_bytes(audio_input)  
     
-    frame_length = int(0.01667 * sr)  # Frame length set to 0.01667 seconds (~60 fps)
-    hop_length = frame_length // 2  # 2x overlap for smoother transitions
-    min_frames = 9  # Minimum number of frames needed for delta calculation
+    # Calculate frame parameters for 60 FPS alignment
+    # Frame length: 0.01667 seconds = 1/60 second (matches animation frame rate)
+    frame_length = int(0.01667 * sr)  # Frame length in samples
+    hop_length = frame_length // 2  # 50% overlap for smoother feature transitions
+    min_frames = 9  # Minimum frames needed for delta/delta-delta calculations
 
+    # Calculate number of frames that will be extracted
     num_frames = (len(y) - frame_length) // hop_length + 1
 
+    # Validate audio length (must have enough frames for feature extraction)
     if num_frames < min_frames:
         print(f"Audio file is too short: {num_frames} frames, required: {min_frames} frames")
         return None, None
 
+    # Extract and combine all audio features
+    # This creates a 256-dimensional feature vector per frame
     combined_features = extract_and_combine_features(y, sr, frame_length, hop_length)
     
     return combined_features, y
